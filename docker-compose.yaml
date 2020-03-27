@@ -1,0 +1,57 @@
+version: "3.7"
+
+volumes:
+  data:
+
+networks:
+  elastic:
+
+services:
+  es:
+    image: docker.elastic.co/elasticsearch/elasticsearch:${TAG:-7.6.1}
+    environment:
+      - cluster.name=docker-cluster
+      - bootstrap.memory_lock=true
+      - discovery.type=single-node
+      - node.master=true
+      - node.data=true
+      - http.cors.enabled=true
+      - http.cors.allow-origin=*
+      - http.cors.allow-headers=Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With
+      - http.cors.allow-credentials=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - data:/usr/share/elasticsearch/data
+    ports:
+      - 9200:9200
+    networks:
+      - elastic
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200/_cat/health"]
+      interval: 10s
+      timeout: 2s
+      retries: 5
+      start_period: 15s
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:${TAG:-7.6.1}
+    environment:
+      - "ELASTICSEARCH_HOSTS=http://es:9200"
+      - server.name=kibana
+      - server.host="0"
+    ports:
+      - 5601:5601
+    networks:
+      - elastic
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5601"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 15s
+    depends_on:
+      - es
